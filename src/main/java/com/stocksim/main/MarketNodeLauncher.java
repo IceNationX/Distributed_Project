@@ -7,18 +7,29 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 public class MarketNodeLauncher {
+
+    // launches the market node server
     public static void main(String[] args) {
         try {
             try {
+                // tries to create registry
                 LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
                 System.out.println("RMI registry created.");
             } catch (Exception e) {
+                // registry already running
                 System.out.println("RMI registry already running.");
             }
+
+            // creates market node instance
             MarketNode marketNode = new MarketNode();
+
+            // builds rmi url
             String rmiUrl = "//localhost/" + MarketNode.RMI_NAME;
+
+            // binds market node to registry
             Naming.rebind(rmiUrl, marketNode);
             System.out.println("MarketNode is ready and bound to " + rmiUrl);
+
         } catch (Exception e) {
             System.err.println("MarketNodeLauncher exception: " + e.toString());
             e.printStackTrace();

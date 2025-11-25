@@ -37,10 +37,12 @@ public class MainUI extends Application {
     private final ObservableList<String> agentStatusData = FXCollections.observableArrayList();
     private Label marketStatusLabel;
 
+    // entry point
     public static void main(String[] args) {
         launch(args);
     }
 
+    // connects to rmi on start
     @Override
     public void init() {
         try {
@@ -50,31 +52,44 @@ public class MainUI extends Application {
         }
     }
 
+    // builds and starts the ui
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Distributed Stock Trading Simulation");
+
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(10));
-        root.setCenter(createTradeTable());
-        root.setRight(createStatusPanel());
+        root.setCenter(createTradeTable());      // sets trade table
+        root.setRight(createStatusPanel());      // sets status panel
+
         primaryStage.setScene(new Scene(root, 1024, 768));
         primaryStage.show();
-        startUiUpdateTask();
+
+        startUiUpdateTask(); // starts updates
     }
 
+    // builds the trade table
     private TableView<Trade> createTradeTable() {
         TableView<Trade> table = new TableView<>(tradeData);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
         TableColumn<Trade, Long> ltCol = new TableColumn<>("Lamport Time");
         ltCol.setCellValueFactory(new PropertyValueFactory<>("lamportTimestamp"));
+
         TableColumn<Trade, String> agentCol = new TableColumn<>("Agent ID");
         agentCol.setCellValueFactory(new PropertyValueFactory<>("agentId"));
+
         TableColumn<Trade, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getQuantity() > 0 ? "BUY" : "SELL"));
+        typeCol.setCellValueFactory(cell ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cell.getValue().getQuantity() > 0 ? "BUY" : "SELL"));
+
         TableColumn<Trade, String> symbolCol = new TableColumn<>("Symbol");
         symbolCol.setCellValueFactory(new PropertyValueFactory<>("stockSymbol"));
+
         TableColumn<Trade, Integer> qtyCol = new TableColumn<>("Qty");
         qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+
         TableColumn<Trade, Double> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
         priceCol.setCellFactory(tc -> new TableCell<>() {
@@ -84,60 +99,91 @@ public class MainUI extends Application {
                 setText(empty ? null : String.format("%.2f", price));
             }
         });
+
         TableColumn<Trade, String> timeCol = new TableColumn<>("Real Time");
-        timeCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(new SimpleDateFormat("HH:mm:ss").format(new Date(cell.getValue().getSystemTimeMillis()))));
+        timeCol.setCellValueFactory(cell ->
+                new javafx.beans.property.SimpleStringProperty(
+                        new SimpleDateFormat("HH:mm:ss")
+                                .format(new Date(cell.getValue().getSystemTimeMillis()))));
+
         table.getColumns().setAll(ltCol, agentCol, typeCol, symbolCol, qtyCol, priceCol, timeCol);
         return table;
     }
 
+    // builds the right status panel
     private VBox createStatusPanel() {
         VBox statusPanel = new VBox(10);
         statusPanel.setPadding(new Insets(0, 0, 0, 10));
         statusPanel.setAlignment(Pos.TOP_CENTER);
         statusPanel.setMinWidth(200);
+
         Label marketTitle = new Label("Market Node Status");
         marketTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+
         marketStatusLabel = new Label("UNKNOWN");
         marketStatusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+
         Label agentTitle = new Label("Agent Statuses");
         agentTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+
         ListView<String> agentStatusList = new ListView<>(agentStatusData);
-        statusPanel.getChildren().addAll(marketTitle, marketStatusLabel, new Separator(), agentTitle, agentStatusList);
+
+        statusPanel.getChildren().addAll(
+                marketTitle, marketStatusLabel,
+                new Separator(),
+                agentTitle, agentStatusList
+        );
+
         return statusPanel;
     }
 
+    // schedules repeated ui updates
     private void startUiUpdateTask() {
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);
             return t;
         });
+
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 if (marketNode == null) throw new RemoteException("MarketNode not connected.");
+
                 SystemState state = marketNode.getState();
+
                 Platform.runLater(() -> updateUiComponents(state));
+
             } catch (RemoteException e) {
                 Platform.runLater(this::setMarketNodeDownStatus);
             }
+
         }, 0, 1, TimeUnit.SECONDS);
     }
 
+    // updates ui data
     private void updateUiComponents(SystemState state) {
         tradeData.setAll(state.getRecentTrades());
-        agentStatusData.setAll(state.getAgentStatuses().entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue())
-                .sorted().collect(Collectors.toList()));
+        agentStatusData.setAll(
+                state.getAgentStatuses().entrySet().stream()
+                        .map(e -> e.getKey() + ": " + e.getValue())
+                        .sorted()
+                        .collect(Collectors.toList())
+        );
+
         marketStatusLabel.setText(state.getMarketNodeStatus());
-        marketStatusLabel.setTextFill("UP".equalsIgnoreCase(state.getMarketNodeStatus()) ? Color.GREEN : Color.RED);
+        marketStatusLabel.setTextFill(
+                "UP".equalsIgnoreCase(state.getMarketNodeStatus()) ? Color.GREEN : Color.RED
+        );
     }
 
+    // sets ui to down state
     private void setMarketNodeDownStatus() {
         marketStatusLabel.setText("DOWN");
         marketStatusLabel.setTextFill(Color.RED);
         agentStatusData.clear();
     }
 
+    // stops background scheduler
     @Override
     public void stop() {
         if (scheduler != null) scheduler.shutdownNow();
