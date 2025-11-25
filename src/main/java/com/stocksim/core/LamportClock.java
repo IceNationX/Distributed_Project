@@ -2,49 +2,35 @@ package com.stocksim.core;
 
 import java.io.Serializable;
 
-/**
- * Implements a Lamport logical clock for maintaining causal ordering of events
- * in a distributed system. Each event (local, send, receive) updates the clock.
- */
+// lamport clock for ordering events in distributed system
 public class LamportClock implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    // local logical time
     private long time;
 
+    // start clock at 0
     public LamportClock() {
         this.time = 0;
     }
 
-    /**
-     * Increments the local clock for an internal event.
-     */
+    // internal event tick
     public synchronized void tick() {
         this.time++;
     }
 
-    /**
-     * Increments the clock and returns the new value for an outgoing message.
-     * This signifies a "send event".
-     * @return The logical timestamp to be sent with a message.
-     */
+    // outgoing message tick
     public synchronized long updateOnSend() {
         this.time++;
         return this.time;
     }
 
-    /**
-     * Updates the local clock upon receiving a message.
-     * The local clock is set to max(localTime, receivedTime) + 1.
-     * This signifies a "receive event".
-     * @param receivedTime The Lamport timestamp from the incoming message.
-     */
+    // update clock on receiving timestamp
     public synchronized void updateOnReceive(long receivedTime) {
         this.time = Math.max(this.time, receivedTime) + 1;
     }
 
-    /**
-     * Returns the current logical time of this clock.
-     * @return The current Lamport timestamp.
-     */
+    // get current logical time
     public synchronized long getTime() {
         return this.time;
     }
