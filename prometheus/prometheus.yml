@@ -1,0 +1,34 @@
+# prometheus.yml
+# Global configurations
+global:
+  scrape_interval: 5s # How frequently to scrape targets
+  evaluation_interval: 5s # How frequently to evaluate rules
+
+# Scrape configurations for the stock simulation
+scrape_configs:
+  # Job for scraping the central MarketNode
+  - job_name: 'market'
+    static_configs:
+      - targets: ['localhost:8080']
+        labels:
+          instance: 'market-node-01'
+
+  # Job for scraping all TradingAgents
+  - job_name: 'agents'
+    static_configs:
+      # Assuming 3 agents are started as per the original README
+      # Ports are 9090 + agent_id_number
+      - targets: ['localhost:9091']
+        labels:
+          instance: 'agent-1'
+      - targets: ['localhost:9092']
+        labels:
+          instance: 'agent-2'
+      - targets: ['localhost:9093']
+        labels:
+          instance: 'agent-3'
+      # To add more agents, simply copy one of the target blocks
+      # and increment the port and instance label.
+      # - targets: ['localhost:9094']
+      #   labels:
+      #     instance: 'agent-4'
